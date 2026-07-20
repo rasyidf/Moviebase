@@ -18,7 +18,8 @@ All-in-one movie library manager. Scan your folders, fetch metadata from TMDB, r
 
 | Movie List | Detail Panel |
 |---|---|
-| Poster thumbnails, quality badges, series groups | TMDB metadata, poster, technical info |
+| <img width="1111" height="908" alt="image" src="https://github.com/user-attachments/assets/7da527dd-6825-43a9-89fe-1514145a2de0" />
+ | TMDB metadata, poster, technical info |
 
 ## Getting Started
 
