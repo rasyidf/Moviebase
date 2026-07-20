@@ -57,7 +57,7 @@ public sealed partial class MainWindow : Window
 
     private async void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        await _vm.OpenFolderCommand.ExecuteAsync(null);
+        await _vm.AddFolderCommand.ExecuteAsync(null);
         RefreshMovieList();
         PathText.Text = _vm.CurrentPath;
     }
@@ -126,12 +126,47 @@ public sealed partial class MainWindow : Window
         await _vm.SetFolderThumbnailsCommand.ExecuteAsync(null);
     }
 
+    private async void DetectCollections_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.DetectCollectionsCommand.ExecuteAsync(null);
+        RefreshMovieList();
+    }
+
+    private async void ImportFiles_Click(object sender, RoutedEventArgs e)
+    {
+        // Scan common folders and show importable movies
+        var found = _vm.ScanCommonFolders();
+        if (found.Count == 0)
+        {
+            StatusText.Text = "No new movies found in Downloads/Videos/Movies";
+            return;
+        }
+
+        // Show a dialog to confirm import
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = $"Found {found.Count} movies",
+            Content = $"Found {found.Count} movie files in Downloads, Videos, and Movies folders.\n\nAdd them to the library?",
+            PrimaryButtonText = "Add All",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await _vm.AddFilesAsync(found);
+            RefreshMovieList();
+        }
+    }
+
     // --- Drag and drop ---
 
     private void Grid_DragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)
     {
         e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Link;
-        e.DragUIOverride.Caption = "Scan folder";
+        e.DragUIOverride.Caption = "Add to library";
         e.DragUIOverride.IsCaptionVisible = true;
     }
 
@@ -140,10 +175,25 @@ public sealed partial class MainWindow : Window
         if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems)) return;
 
         var items = await e.DataView.GetStorageItemsAsync();
-        var folder = items.OfType<Windows.Storage.StorageFolder>().FirstOrDefault();
-        if (folder is null) return;
 
-        await _vm.ScanPathAsync(folder.Path);
+        // Handle folders
+        var folders = items.OfType<Windows.Storage.StorageFolder>().ToList();
+        foreach (var folder in folders)
+        {
+            await _vm.ScanPathAsync(folder.Path);
+        }
+
+        // Handle files (.mp4, .mkv, etc.)
+        var files = items.OfType<Windows.Storage.StorageFile>()
+            .Where(f => _vm.GetSettings().MovieExtensions.Contains(f.FileType, StringComparison.OrdinalIgnoreCase))
+            .Select(f => f.Path)
+            .ToList();
+
+        if (files.Count > 0)
+        {
+            await _vm.AddFilesAsync(files);
+        }
+
         RefreshMovieList();
         PathText.Text = _vm.CurrentPath;
     }
@@ -166,10 +216,14 @@ public sealed partial class MainWindow : Window
 
         EmptyState.Visibility = Visibility.Collapsed;
 
-        // Group movies: standalone vs series
-        var standalone = filtered.Where(m => !m.IsInSeries).ToList();
+        // Group movies: standalone vs series/collections
+        var standalone = filtered.Where(m => !m.IsInSeries && string.IsNullOrEmpty(m.CollectionName)).ToList();
         var seriesGroups = filtered.Where(m => m.IsInSeries)
             .GroupBy(m => m.SeriesName)
+            .OrderBy(g => g.Key)
+            .ToList();
+        var collectionGroups = filtered.Where(m => !m.IsInSeries && !string.IsNullOrEmpty(m.CollectionName))
+            .GroupBy(m => m.CollectionName)
             .OrderBy(g => g.Key)
             .ToList();
 
@@ -178,6 +232,7 @@ public sealed partial class MainWindow : Window
             MovieListPanel.Children.Add(BuildMovieListView(standalone));
         }
 
+        // Series groups (folder-based)
         foreach (var group in seriesGroups)
         {
             var expander = new Expander
@@ -189,7 +244,22 @@ public sealed partial class MainWindow : Window
                 Padding = new Thickness(0),
                 Margin = new Thickness(0, 4, 0, 0)
             };
+            expander.Content = BuildMovieListView(group.ToList());
+            MovieListPanel.Children.Add(expander);
+        }
 
+        // Collection groups (TMDB-detected)
+        foreach (var group in collectionGroups)
+        {
+            var expander = new Expander
+            {
+                Header = BuildCollectionHeader(group.Key!, group.Count()),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                IsExpanded = true,
+                Padding = new Thickness(0),
+                Margin = new Thickness(0, 4, 0, 0)
+            };
             expander.Content = BuildMovieListView(group.ToList());
             MovieListPanel.Children.Add(expander);
         }
@@ -204,9 +274,27 @@ public sealed partial class MainWindow : Window
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         panel.Children.Add(new FontIcon
         {
-            Glyph = "\uE1D3", // film strip
+            Glyph = "\uE1D3",
             FontSize = 14,
             Foreground = (Brush)Application.Current.Resources["SystemFillColorCautionBrush"]
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"{name} ({count})",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 13
+        });
+        return panel;
+    }
+
+    private StackPanel BuildCollectionHeader(string name, int count)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        panel.Children.Add(new FontIcon
+        {
+            Glyph = "\uE8FD", // library icon
+            FontSize = 14,
+            Foreground = (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"]
         });
         panel.Children.Add(new TextBlock
         {
@@ -326,7 +414,8 @@ public sealed partial class MainWindow : Window
         TitleText.Text = movie.IsFetched ? $"{movie.Title} ({movie.Year})" : movie.Title;
         YearText.Text = movie.Year > 0 ? movie.Year.ToString() : "";
         GenreText.Text = movie.Genre;
-        SeriesText.Text = movie.IsInSeries ? $"Series: {movie.SeriesName}" : "";
+        SeriesText.Text = movie.IsInSeries ? $"Series: {movie.SeriesName}" :
+            !string.IsNullOrEmpty(movie.CollectionName) ? $"Collection: {movie.CollectionName}" : "";
         ImdbText.Text = !string.IsNullOrEmpty(movie.ImdbId) ? $"IMDB: {movie.ImdbId}" : "";
         PlotText.Text = movie.Plot;
 

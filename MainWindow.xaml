@@ -47,9 +47,13 @@
                 <CommandBar Grid.Row="0" DefaultLabelPosition="Right" IsOpen="False"
                             HorizontalAlignment="Left" Background="Transparent">
                     <!-- Step 1: Load -->
-                    <AppBarButton Label="Scan Folder" Click="OpenFolder_Click" AccessKey="O"
-                                  ToolTipService.ToolTip="Open a movie folder to scan (Ctrl+O)">
+                    <AppBarButton Label="Add Folder" Click="OpenFolder_Click" AccessKey="O"
+                                  ToolTipService.ToolTip="Add a movie folder to the library">
                         <AppBarButton.Icon><FontIcon Glyph="&#xE8DA;" /></AppBarButton.Icon>
+                    </AppBarButton>
+                    <AppBarButton Label="Import Files" Click="ImportFiles_Click"
+                                  ToolTipService.ToolTip="Scan Downloads/Videos for importable movies">
+                        <AppBarButton.Icon><FontIcon Glyph="&#xE8B5;" /></AppBarButton.Icon>
                     </AppBarButton>
                     <AppBarSeparator />
                     <!-- Step 2: Enrich -->
@@ -68,6 +72,9 @@
                         <AppBarButton.Icon><FontIcon Glyph="&#xE8AC;" /></AppBarButton.Icon>
                     </AppBarButton>
                     <CommandBar.SecondaryCommands>
+                        <AppBarButton Label="Detect Collections" Click="DetectCollections_Click">
+                            <AppBarButton.Icon><FontIcon Glyph="&#xE1D3;" /></AppBarButton.Icon>
+                        </AppBarButton>
                         <AppBarButton Label="Generate NFO files" Click="GenerateNfo_Click">
                             <AppBarButton.Icon><FontIcon Glyph="&#xE9F9;" /></AppBarButton.Icon>
                         </AppBarButton>

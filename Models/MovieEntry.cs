@@ -37,6 +37,9 @@ public class MovieEntry
     // Duplicate flag (set by ViewModel after scan)
     public bool IsDuplicate { get; set; }
 
+    // TMDB collection/franchise name
+    public string CollectionName { get; set; } = "";
+
     public string ThumbnailUrl => string.IsNullOrEmpty(PosterPath) ? "" : $"https://image.tmdb.org/t/p/w92{PosterPath}";
 
     /// <summary>Quality badge text for the list (e.g. "1080p • Blu-ray")</summary>

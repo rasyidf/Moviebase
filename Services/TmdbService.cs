@@ -45,7 +45,8 @@ public class TmdbService
             ImdbId = details.ImdbId ?? "",
             Plot = details.Overview ?? "",
             PosterPath = details.PosterPath ?? "",
-            AlternativeNames = altNames.ToArray()
+            AlternativeNames = altNames.ToArray(),
+            CollectionName = details.BelongsToCollection?.Name
         };
     }
 
@@ -66,7 +67,10 @@ public class TmdbService
 
     // JSON DTOs
     private record SearchResponse([property: JsonPropertyName("results")] List<SearchResult> Results);
-    private record SearchResult([property: JsonPropertyName("id")] int Id);
+    private record SearchResult([property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("release_date")] string ReleaseDate,
+        [property: JsonPropertyName("poster_path")] string? PosterPath);
     private record MovieDetails
     {
         [JsonPropertyName("id")] public int Id { get; init; }
@@ -77,10 +81,62 @@ public class TmdbService
         [JsonPropertyName("imdb_id")] public string? ImdbId { get; init; }
         [JsonPropertyName("genres")] public List<GenreDto>? Genres { get; init; }
         [JsonPropertyName("alternative_titles")] public AltTitlesContainer? AlternativeTitles { get; init; }
+        [JsonPropertyName("belongs_to_collection")] public CollectionRef? BelongsToCollection { get; init; }
     }
     private record GenreDto([property: JsonPropertyName("name")] string Name);
     private record AltTitlesContainer([property: JsonPropertyName("titles")] List<AltTitle> Titles);
     private record AltTitle([property: JsonPropertyName("title")] string Title);
+    private record CollectionRef(
+        [property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("name")] string Name);
+    private record CollectionDetails(
+        [property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("parts")] List<CollectionPart> Parts);
+    private record CollectionPart(
+        [property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("release_date")] string ReleaseDate);
+
+    /// <summary>Search TMDB and return multiple results for manual selection.</summary>
+    public async Task<List<TmdbSearchHit>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        var url = $"{BaseUrl}/search/movie?api_key={_apiKey}&query={Uri.EscapeDataString(query)}&include_adult=false";
+        var response = await Http.GetFromJsonAsync<SearchResponse>(url, ct);
+        if (response?.Results is null) return [];
+
+        return response.Results.Select(r => new TmdbSearchHit
+        {
+            Id = r.Id,
+            Title = r.Title,
+            Year = DateTime.TryParse(r.ReleaseDate, out var d) ? d.Year : 0,
+            PosterPath = r.PosterPath ?? ""
+        }).ToList();
+    }
+
+    /// <summary>Get the TMDB collection (franchise) a movie belongs to.</summary>
+    public async Task<TmdbCollection?> GetCollectionAsync(int movieId, CancellationToken ct = default)
+    {
+        var url = $"{BaseUrl}/movie/{movieId}?api_key={_apiKey}";
+        var details = await Http.GetFromJsonAsync<MovieDetails>(url, ct);
+        if (details?.BelongsToCollection is null) return null;
+
+        var colUrl = $"{BaseUrl}/collection/{details.BelongsToCollection.Id}?api_key={_apiKey}";
+        var collection = await Http.GetFromJsonAsync<CollectionDetails>(colUrl, ct);
+        if (collection is null) return null;
+
+        return new TmdbCollection
+        {
+            Id = collection.Id,
+            Name = collection.Name,
+            Parts = collection.Parts.Select(p => new TmdbCollectionPart
+            {
+                Id = p.Id,
+                Title = p.Title,
+                Year = DateTime.TryParse(p.ReleaseDate, out var d) ? d.Year : 0
+            }).OrderBy(p => p.Year).ToList()
+        };
+    }
 }
 
 public class TmdbMovieResult
@@ -93,4 +149,27 @@ public class TmdbMovieResult
     public string Plot { get; set; } = "";
     public string PosterPath { get; set; } = "";
     public string[] AlternativeNames { get; set; } = [];
+    public string? CollectionName { get; set; }
+}
+
+public class TmdbSearchHit
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public int Year { get; set; }
+    public string PosterPath { get; set; } = "";
+}
+
+public class TmdbCollection
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public List<TmdbCollectionPart> Parts { get; set; } = [];
+}
+
+public class TmdbCollectionPart
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public int Year { get; set; }
 }
