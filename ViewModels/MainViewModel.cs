@@ -420,6 +420,34 @@ public partial class MainViewModel : ObservableObject
         _library.Save();
     }
 
+    public void RemoveMovie(MovieEntry movie)
+    {
+        _library.Remove(movie);
+        Movies.Remove(movie);
+        HasMovies = Movies.Count > 0;
+        if (SelectedMovie == movie) SelectedMovie = null;
+        StatusText = $"Removed — {Movies.Count} movies in library";
+    }
+
+    public int RescanWatchFolders()
+    {
+        var added = _library.Rescan(_settings.MovieExtensions);
+        // Sync ObservableCollection with library
+        var knownPaths = new HashSet<string>(Movies.Select(m => m.FullPath), StringComparer.OrdinalIgnoreCase);
+        foreach (var m in _library.Movies)
+        {
+            if (!knownPaths.Contains(m.FullPath)) Movies.Add(m);
+        }
+        // Remove stale
+        var libraryPaths = new HashSet<string>(_library.Movies.Select(m => m.FullPath), StringComparer.OrdinalIgnoreCase);
+        for (int i = Movies.Count - 1; i >= 0; i--)
+        {
+            if (!libraryPaths.Contains(Movies[i].FullPath)) Movies.RemoveAt(i);
+        }
+        HasMovies = Movies.Count > 0;
+        return added;
+    }
+
     private void DetectDuplicates()
     {
         foreach (var m in Movies) m.IsDuplicate = false;

@@ -14,6 +14,7 @@ public class MovieEntry
     public int TmdbId { get; set; } = -1;
     public string[] AlternativeNames { get; set; } = [];
     public string Size { get; set; } = "";
+    public long SizeBytes { get; set; }
     public string SeriesName { get; set; } = "";
 
     // Terka-detected quality info
@@ -58,6 +59,7 @@ public class MovieEntry
     {
         FullPath = fullPath;
         var fi = new FileInfo(fullPath);
+        SizeBytes = fi.Length;
         Size = FormatBytes(fi.Length);
     }
 

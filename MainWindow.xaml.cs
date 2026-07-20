@@ -4,6 +4,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Moviebase.Models;
@@ -18,6 +19,7 @@ public sealed partial class MainWindow : Window
     private static extern uint GetDpiForWindow(nint hWnd);
 
     private readonly MainViewModel _vm = new();
+    private int _sortIndex; // 0=Title, 1=Year, 2=DateAdded, 3=Size
 
     public MainWindow()
     {
@@ -30,6 +32,19 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new SizeInt32((int)(1100 * scale), (int)(720 * scale)));
 
         _vm.PropertyChanged += OnVmPropertyChanged;
+
+        // Keyboard accelerators
+        var accelAdd = new KeyboardAccelerator { Modifiers = Windows.System.VirtualKeyModifiers.Control, Key = Windows.System.VirtualKey.O };
+        accelAdd.Invoked += AccelAddFolder_Invoked;
+        RootGrid.KeyboardAccelerators.Add(accelAdd);
+
+        var accelRefresh = new KeyboardAccelerator { Key = Windows.System.VirtualKey.F5 };
+        accelRefresh.Invoked += AccelRefresh_Invoked;
+        RootGrid.KeyboardAccelerators.Add(accelRefresh);
+
+        var accelDelete = new KeyboardAccelerator { Key = Windows.System.VirtualKey.Delete };
+        accelDelete.Invoked += AccelDelete_Invoked;
+        RootGrid.KeyboardAccelerators.Add(accelDelete);
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -164,6 +179,53 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // --- Keyboard accelerators ---
+
+    private async void AccelAddFolder_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        await _vm.AddFolderCommand.ExecuteAsync(null);
+        RefreshMovieList();
+        PathText.Text = _vm.CurrentPath;
+    }
+
+    private async void AccelRefresh_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        _vm.IsBusy = true;
+        _vm.StatusText = "Refreshing...";
+        var added = await Task.Run(() => _vm.RescanWatchFolders());
+        RefreshMovieList();
+        _vm.StatusText = added > 0 ? $"Added {added} new movies" : "Library is up to date";
+        _vm.IsBusy = false;
+    }
+
+    private void AccelDelete_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        RemoveSelectedMovie();
+    }
+
+    private void RemoveSelectedMovie()
+    {
+        if (_vm.SelectedMovie is null) return;
+        _vm.RemoveMovie(_vm.SelectedMovie);
+        RefreshMovieList();
+        DetailPanel.Visibility = Visibility.Collapsed;
+        DetailEmpty.Visibility = Visibility.Visible;
+    }
+
+    // --- Sort ---
+
+    private void SortBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox cb)
+        {
+            _sortIndex = cb.SelectedIndex;
+            RefreshMovieList();
+        }
+    }
+
     // --- Drag and drop ---
 
     private void Grid_DragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)
@@ -207,7 +269,7 @@ public sealed partial class MainWindow : Window
     {
         MovieListPanel.Children.Clear();
 
-        var filtered = _vm.FilteredMovies.ToList();
+        var filtered = ApplySort(_vm.FilteredMovies).ToList();
 
         if (filtered.Count == 0)
         {
@@ -270,6 +332,17 @@ public sealed partial class MainWindow : Window
         MovieCountText.Text = filtered.Count == _vm.Movies.Count
             ? $"{_vm.Movies.Count} movies"
             : $"{filtered.Count}/{_vm.Movies.Count} movies";
+    }
+
+    private IEnumerable<MovieEntry> ApplySort(IEnumerable<MovieEntry> movies)
+    {
+        return _sortIndex switch
+        {
+            1 => movies.OrderByDescending(m => m.Year),
+            2 => movies, // ponytail: list order ≈ date added; no timestamp field
+            3 => movies.OrderByDescending(m => m.SizeBytes),
+            _ => movies.OrderBy(m => m.Title, StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     private StackPanel BuildSeriesHeader(string name, int count)
@@ -346,6 +419,71 @@ public sealed partial class MainWindow : Window
                     UpdateDetail();
                 }
             }
+        };
+
+        // Context menu on right-click
+        listView.RightTapped += (s, args) =>
+        {
+            var element = args.OriginalSource as FrameworkElement;
+            // Walk up to find the data context
+            while (element != null && element.DataContext is not MovieEntryDisplay)
+                element = element.Parent as FrameworkElement;
+
+            if (element?.DataContext is not MovieEntryDisplay display) return;
+
+            var idx = movies.FindIndex(m => m.Title == display.Title && m.Year.ToString() == display.Year);
+            if (idx < 0) return;
+
+            var movie = movies[idx];
+            _vm.SelectedMovie = movie;
+            UpdateDetail();
+
+            var menu = new MenuFlyout();
+
+            var lookUp = new MenuFlyoutItem { Text = "Look Up", Icon = new FontIcon { Glyph = "\uE721" } };
+            lookUp.Click += async (_, _) =>
+            {
+                var results = await _vm.ManualSearchAsync(movie.Title);
+                if (results.Count > 0)
+                {
+                    await _vm.ApplySearchResultAsync(movie, results[0].Id);
+                    RefreshMovieList();
+                    UpdateDetail();
+                }
+            };
+            menu.Items.Add(lookUp);
+
+            var watchText = movie.IsWatched ? "Unwatch" : "Mark as Watched";
+            var watchItem = new MenuFlyoutItem { Text = watchText, Icon = new FontIcon { Glyph = "\uE73E" } };
+            watchItem.Click += (_, _) =>
+            {
+                _vm.ToggleWatched(movie);
+                RefreshMovieList();
+            };
+            menu.Items.Add(watchItem);
+
+            var openFolder = new MenuFlyoutItem { Text = "Open Folder", Icon = new FontIcon { Glyph = "\uE838" } };
+            openFolder.Click += (_, _) =>
+            {
+                var dir = Path.GetDirectoryName(movie.FullPath);
+                if (dir is not null && Directory.Exists(dir))
+                    System.Diagnostics.Process.Start("explorer.exe", dir);
+            };
+            menu.Items.Add(openFolder);
+
+            menu.Items.Add(new MenuFlyoutSeparator());
+
+            var remove = new MenuFlyoutItem { Text = "Remove from Library", Icon = new FontIcon { Glyph = "\uE74D" } };
+            remove.Click += (_, _) =>
+            {
+                _vm.RemoveMovie(movie);
+                RefreshMovieList();
+                DetailPanel.Visibility = Visibility.Collapsed;
+                DetailEmpty.Visibility = Visibility.Visible;
+            };
+            menu.Items.Add(remove);
+
+            menu.ShowAt(element, args.GetPosition(element));
         };
 
         return listView;

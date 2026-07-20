@@ -7,7 +7,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid AllowDrop="True" DragOver="Grid_DragOver" Drop="Grid_Drop">
+    <Grid x:Name="RootGrid" AllowDrop="True" DragOver="Grid_DragOver" Drop="Grid_Drop">
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
@@ -93,10 +93,22 @@
                     </CommandBar.SecondaryCommands>
                 </CommandBar>
 
-                <!-- Search/Filter -->
-                <AutoSuggestBox x:Name="SearchBox" Grid.Row="1" PlaceholderText="Filter movies..."
-                                QueryIcon="Find" Margin="0,0,0,8"
-                                TextChanged="SearchBox_TextChanged" VerticalAlignment="Top" />
+                <!-- Search/Filter + Sort -->
+                <Grid Grid.Row="1" Margin="0,0,0,8" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <AutoSuggestBox x:Name="SearchBox" PlaceholderText="Filter movies..."
+                                    QueryIcon="Find" TextChanged="SearchBox_TextChanged" VerticalAlignment="Top" />
+                    <ComboBox x:Name="SortBox" Grid.Column="1" Width="150" VerticalAlignment="Top"
+                              SelectionChanged="SortBox_SelectionChanged" SelectedIndex="0">
+                        <ComboBoxItem Content="Title (A–Z)" />
+                        <ComboBoxItem Content="Year (newest)" />
+                        <ComboBoxItem Content="Date Added" />
+                        <ComboBoxItem Content="Size (largest)" />
+                    </ComboBox>
+                </Grid>
 
                 <!-- Movie List Area -->
                 <ScrollViewer Grid.Row="2" Padding="0,0,0,8">
