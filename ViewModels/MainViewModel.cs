@@ -24,15 +24,22 @@ public partial class MainViewModel : ObservableObject
         foreach (var m in _library.Movies) Movies.Add(m);
         HasMovies = Movies.Count > 0;
         if (HasMovies) StatusText = FormatStatusBar();
+    }
 
-        // ponytail: fire-and-forget rescan; UI updates via ObservableCollection on DispatcherQueue
-        if (_library.WatchFolders.Count > 0)
+    /// <summary>Call from MainWindow after UI is ready to rescan watch folders.</summary>
+    public async Task StartupRescanAsync()
+    {
+        if (_library.WatchFolders.Count == 0) return;
+
+        var added = await Task.Run(() => _library.Rescan(_settings.MovieExtensions));
+        if (added > 0)
         {
-            _ = Task.Run(() =>
-            {
-                var added = RescanWatchFolders();
-                if (added > 0) StatusText = FormatStatusBar();
-            });
+            // Sync new items to ObservableCollection
+            Movies.Clear();
+            foreach (var m in _library.Movies) Movies.Add(m);
+            DetectDuplicates();
+            HasMovies = Movies.Count > 0;
+            StatusText = $"Added {added} new movies · {FormatStatusBar()}";
         }
     }
 

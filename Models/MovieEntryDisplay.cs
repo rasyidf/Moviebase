@@ -10,7 +10,8 @@ public class MovieEntryDisplay
     public string Size { get; set; } = "";
     public string Status { get; set; } = "";
     public string Folder { get; set; } = "";
-    public string PosterUrl { get; set; } = ""; // w92 thumbnail or empty
+    public string PosterUrl { get; set; } = "";
     public string SeriesName { get; set; } = "";
-    public bool IsGroupHeader { get; set; } // true = this is a series header, not a movie
+    public bool IsGroupHeader { get; set; }
+    public string FullPath { get; set; } = ""; // unique key for matching back to MovieEntry
 }

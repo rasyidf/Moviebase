@@ -68,6 +68,17 @@ public sealed partial class MainWindow : Window
         var accelDelete = new KeyboardAccelerator { Key = Windows.System.VirtualKey.Delete };
         accelDelete.Invoked += AccelDelete_Invoked;
         RootGrid.KeyboardAccelerators.Add(accelDelete);
+
+        // Initial list refresh + startup rescan
+        RefreshMovieList();
+        if (_vm.HasMovies) PathText.Text = _vm.GetSettings().LastDirectory;
+        _ = StartupRescanAsync();
+    }
+
+    private async Task StartupRescanAsync()
+    {
+        await _vm.StartupRescanAsync();
+        DispatcherQueue.TryEnqueue(RefreshMovieList);
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -455,47 +466,44 @@ public sealed partial class MainWindow : Window
             Size = m.Size,
             PosterUrl = GetPosterSource(m),
             Folder = BuildSubtitle(m),
+            FullPath = m.FullPath,
         }).ToList();
 
         // Use a DataTemplate programmatically since we can't use x:Bind with dynamic ItemsSource
         listView.ItemTemplate = CreateMovieItemTemplate();
         listView.ItemClick += (s, args) =>
         {
-            if (s is ListView lv && lv.SelectedIndex >= 0 && lv.SelectedIndex < movies.Count)
+            if (args.ClickedItem is MovieEntryDisplay display)
             {
-                _vm.SelectedMovie = movies[lv.SelectedIndex];
-                UpdateDetail();
+                var movie = movies.FirstOrDefault(m => m.FullPath == display.FullPath);
+                if (movie is not null)
+                {
+                    _vm.SelectedMovie = movie;
+                    UpdateDetail();
+                }
             }
         };
 
         // Double-click to play
         listView.DoubleTapped += (s, args) =>
         {
-            if (s is ListView lv && lv.SelectedIndex >= 0 && lv.SelectedIndex < movies.Count)
-            {
-                var movie = movies[lv.SelectedIndex];
-                if (File.Exists(movie.FullPath))
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(movie.FullPath) { UseShellExecute = true });
-            }
+            if (_vm.SelectedMovie is not null && File.Exists(_vm.SelectedMovie.FullPath))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_vm.SelectedMovie.FullPath) { UseShellExecute = true });
         };
 
         // Context menu on right-click
         listView.RightTapped += (s, args) =>
         {
-            if (s is not ListView lv) return;
-
-            // Determine the tapped item index
             var element = args.OriginalSource as FrameworkElement;
-            while (element != null && element is not ListViewItem)
+            while (element != null && element.DataContext is not MovieEntryDisplay)
                 element = element.Parent as FrameworkElement;
 
-            if (element is not ListViewItem item) return;
-            var idx = lv.IndexFromContainer(item);
-            if (idx < 0 || idx >= movies.Count) return;
+            if (element?.DataContext is not MovieEntryDisplay display) return;
 
-            var movie = movies[idx];
+            var movie = movies.FirstOrDefault(m => m.FullPath == display.FullPath);
+            if (movie is null) return;
+
             _vm.SelectedMovie = movie;
-            lv.SelectedIndex = idx;
             UpdateDetail();
 
             var menu = new MenuFlyout();
@@ -543,7 +551,7 @@ public sealed partial class MainWindow : Window
             };
             menu.Items.Add(remove);
 
-            menu.ShowAt(item, args.GetPosition(item));
+            menu.ShowAt(element, args.GetPosition(element));
         };
 
         return listView;
