@@ -130,39 +130,31 @@ public sealed partial class MainWindow : Window
         RefreshMovieList();
     }
 
-    private async void Settings_Click(object sender, RoutedEventArgs e)
+    private void Settings_Click(object sender, RoutedEventArgs e)
     {
         var settings = _vm.GetSettings();
-        var dialog = new Views.SettingsDialog(settings, _vm.GetWatchFolders())
+        var window = new Views.SettingsWindow(settings, _vm.GetWatchFolders());
+        window.Closed += (_, _) =>
         {
-            XamlRoot = Content.XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            _vm.TmdbApiKey = dialog.ApiKey;
-            _vm.MovieExtensions = dialog.Extensions;
-            _vm.FileRenamePattern = dialog.FilePattern;
-            _vm.FolderRenamePattern = dialog.FolderPattern;
-            _vm.SwapThe = dialog.SwapThe;
-            _vm.LibraryRoot = dialog.LibraryRoot;
-            _vm.DefaultImportMode = dialog.ImportMode;
-            _vm.UpdateWatchFolders(dialog.WatchFolders);
-
-            // Apply theme immediately
-            settings.Theme = dialog.Theme;
-            settings.Save();
-            if (Content is FrameworkElement root)
+            if (window.WasSaved)
             {
-                root.RequestedTheme = dialog.Theme switch
+                _vm.UpdateWatchFolders(window.WatchFolders);
+                // Apply theme
+                DispatcherQueue.TryEnqueue(() =>
                 {
-                    "Light" => ElementTheme.Light,
-                    "Dark" => ElementTheme.Dark,
-                    _ => ElementTheme.Default,
-                };
+                    if (Content is FrameworkElement root)
+                    {
+                        root.RequestedTheme = settings.Theme switch
+                        {
+                            "Light" => ElementTheme.Light,
+                            "Dark" => ElementTheme.Dark,
+                            _ => ElementTheme.Default
+                        };
+                    }
+                });
             }
-        }
+        };
+        window.Activate();
     }
 
     private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
