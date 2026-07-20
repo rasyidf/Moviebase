@@ -116,6 +116,38 @@ public sealed partial class MainWindow : Window
         await _vm.ExportJsonCommand.ExecuteAsync(null);
     }
 
+    private async void GenerateNfo_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.GenerateNfoCommand.ExecuteAsync(null);
+    }
+
+    private async void SetThumbnails_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.SetFolderThumbnailsCommand.ExecuteAsync(null);
+    }
+
+    // --- Drag and drop ---
+
+    private void Grid_DragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Link;
+        e.DragUIOverride.Caption = "Scan folder";
+        e.DragUIOverride.IsCaptionVisible = true;
+    }
+
+    private async void Grid_Drop(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems)) return;
+
+        var items = await e.DataView.GetStorageItemsAsync();
+        var folder = items.OfType<Windows.Storage.StorageFolder>().FirstOrDefault();
+        if (folder is null) return;
+
+        await _vm.ScanPathAsync(folder.Path);
+        RefreshMovieList();
+        PathText.Text = _vm.CurrentPath;
+    }
+
     // --- List building with collapsible Expander groups ---
 
     private void RefreshMovieList()
@@ -240,8 +272,10 @@ public sealed partial class MainWindow : Window
     private static string BuildSubtitle(MovieEntry m)
     {
         var parts = new List<string>();
+        if (m.IsWatched) parts.Add("✓ Watched");
+        if (m.IsDuplicate) parts.Add("⚠ Duplicate");
         if (!string.IsNullOrEmpty(m.QualityBadge)) parts.Add(m.QualityBadge);
-        else parts.Add(m.FolderName);
+        else if (parts.Count == 0) parts.Add(m.FolderName);
         if (m.HasSubtitles) parts.Add($"🗎 {m.Subtitles.Count} sub");
         return string.Join(" · ", parts);
     }

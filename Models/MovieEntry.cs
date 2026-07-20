@@ -31,6 +31,12 @@ public class MovieEntry
     public bool IsFetched => TmdbId > 0;
     public bool IsInSeries => !string.IsNullOrEmpty(SeriesName);
 
+    // Watch status
+    public bool IsWatched { get; set; }
+
+    // Duplicate flag (set by ViewModel after scan)
+    public bool IsDuplicate { get; set; }
+
     public string ThumbnailUrl => string.IsNullOrEmpty(PosterPath) ? "" : $"https://image.tmdb.org/t/p/w92{PosterPath}";
 
     /// <summary>Quality badge text for the list (e.g. "1080p • Blu-ray")</summary>

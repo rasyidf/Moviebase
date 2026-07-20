@@ -99,6 +99,7 @@ public partial class MainViewModel : ObservableObject
             StatusText = $"Found {Movies.Count} movies";
         }
 
+        DetectDuplicates();
         HasMovies = Movies.Count > 0;
         IsBusy = false;
     }
@@ -229,5 +230,88 @@ public partial class MainViewModel : ObservableObject
 
         await Task.Run(() => ExportService.ExportJson(file.Path, Movies));
         StatusText = $"Exported {Movies.Count} movies to JSON";
+    }
+
+    // --- NFO generation ---
+
+    [RelayCommand(CanExecute = nameof(HasMovies))]
+    private async Task GenerateNfoAsync()
+    {
+        IsBusy = true;
+        StatusText = "Generating NFO files...";
+        var (written, skipped) = await Task.Run(() => NfoService.GenerateAll(Movies));
+        StatusText = $"Generated {written} NFO files ({skipped} skipped)";
+        IsBusy = false;
+    }
+
+    // --- Folder thumbnails ---
+
+    [RelayCommand(CanExecute = nameof(HasMovies))]
+    private async Task SetFolderThumbnailsAsync()
+    {
+        IsBusy = true;
+        StatusText = "Setting folder thumbnails...";
+        var (set, skipped) = await Task.Run(() => ThumbnailService.SetAll(Movies));
+        StatusText = $"Set {set} folder thumbnails ({skipped} skipped)";
+        IsBusy = false;
+    }
+
+    // --- Watch status ---
+
+    public void ToggleWatched(MovieEntry movie)
+    {
+        movie.IsWatched = !movie.IsWatched;
+        // Auto-save
+        if (!string.IsNullOrEmpty(CurrentPath))
+            Task.Run(() => PersistenceService.Save(CurrentPath, Movies));
+    }
+
+    // --- Drag-drop scan ---
+
+    public async Task ScanPathAsync(string folderPath)
+    {
+        if (!Directory.Exists(folderPath)) return;
+
+        _settings.LastDirectory = folderPath;
+        _settings.Save();
+        CurrentPath = folderPath;
+
+        IsBusy = true;
+        StatusText = "Loading...";
+        Movies.Clear();
+
+        var cached = await Task.Run(() => PersistenceService.Load(folderPath));
+        if (cached is not null)
+        {
+            foreach (var e in cached) Movies.Add(e);
+            StatusText = $"Loaded {Movies.Count} movies (cached)";
+        }
+        else
+        {
+            StatusText = "Scanning...";
+            var entries = await Task.Run(() => MovieScanner.Scan(folderPath, _settings.MovieExtensions));
+            foreach (var e in entries) Movies.Add(e);
+            StatusText = $"Found {Movies.Count} movies";
+        }
+
+        // Detect duplicates
+        DetectDuplicates();
+
+        HasMovies = Movies.Count > 0;
+        IsBusy = false;
+    }
+
+    // --- Duplicate detection ---
+
+    private void DetectDuplicates()
+    {
+        // ponytail: O(n) group-by title+year, flag entries that appear more than once
+        var groups = Movies
+            .GroupBy(m => $"{m.Title.ToLowerInvariant()}|{m.Year}")
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in groups)
+            foreach (var entry in group)
+                entry.IsDuplicate = true;
     }
 }

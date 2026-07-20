@@ -7,7 +7,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+    <Grid AllowDrop="True" DragOver="Grid_DragOver" Drop="Grid_Drop">
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
@@ -68,6 +68,13 @@
                         <AppBarButton.Icon><FontIcon Glyph="&#xE8AC;" /></AppBarButton.Icon>
                     </AppBarButton>
                     <CommandBar.SecondaryCommands>
+                        <AppBarButton Label="Generate NFO files" Click="GenerateNfo_Click">
+                            <AppBarButton.Icon><FontIcon Glyph="&#xE9F9;" /></AppBarButton.Icon>
+                        </AppBarButton>
+                        <AppBarButton Label="Set Folder Thumbnails" Click="SetThumbnails_Click">
+                            <AppBarButton.Icon><FontIcon Glyph="&#xEB9F;" /></AppBarButton.Icon>
+                        </AppBarButton>
+                        <AppBarSeparator />
                         <AppBarButton Label="Export CSV" Click="ExportCsv_Click" Icon="Download" />
                         <AppBarButton Label="Export JSON" Click="ExportJson_Click" Icon="Download" />
                         <AppBarSeparator />
