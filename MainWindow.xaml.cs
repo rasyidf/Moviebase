@@ -267,6 +267,7 @@ public sealed partial class MainWindow : Window
 
     private void RefreshMovieList()
     {
+        if (MovieListPanel is null) return; // called during InitializeComponent
         MovieListPanel.Children.Clear();
 
         var filtered = ApplySort(_vm.FilteredMovies).ToList();

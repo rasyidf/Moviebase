@@ -48,6 +48,7 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_pages is null) return; // called during InitializeComponent
         var idx = NavList.SelectedIndex;
         for (int i = 0; i < _pages.Length; i++)
             _pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
