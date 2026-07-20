@@ -84,7 +84,7 @@ public sealed partial class MainWindow : Window
     private async void Settings_Click(object sender, RoutedEventArgs e)
     {
         var settings = _vm.GetSettings();
-        var dialog = new Views.SettingsDialog(settings)
+        var dialog = new Views.SettingsDialog(settings, _vm.GetWatchFolders())
         {
             XamlRoot = Content.XamlRoot
         };
@@ -97,6 +97,9 @@ public sealed partial class MainWindow : Window
             _vm.FileRenamePattern = dialog.FilePattern;
             _vm.FolderRenamePattern = dialog.FolderPattern;
             _vm.SwapThe = dialog.SwapThe;
+            _vm.LibraryRoot = dialog.LibraryRoot;
+            _vm.DefaultImportMode = dialog.ImportMode;
+            _vm.UpdateWatchFolders(dialog.WatchFolders);
         }
     }
 

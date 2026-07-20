@@ -10,9 +10,12 @@ public class AppSettings
     public string FolderRenamePattern { get; set; } = "{Title} ({Year})";
     public bool SwapThe { get; set; } = true;
     public string LastDirectory { get; set; } = "";
+    public string LibraryRoot { get; set; } = "";
+    public string DefaultImportMode { get; set; } = "Symlink"; // Symlink, Move, Copy
 
     private static readonly string SettingsPath = Path.Combine(
-        AppContext.BaseDirectory, "moviebase-settings.json");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Moviebase", "settings.json");
 
     public static AppSettings Load()
     {
@@ -27,6 +30,9 @@ public class AppSettings
 
     public void Save()
     {
+        var dir = Path.GetDirectoryName(SettingsPath)!;
+        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(SettingsPath, json);
     }

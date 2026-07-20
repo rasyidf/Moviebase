@@ -68,7 +68,18 @@ public partial class MainViewModel : ObservableObject
     public string FileRenamePattern { get => _settings.FileRenamePattern; set { _settings.FileRenamePattern = value; _settings.Save(); } }
     public string FolderRenamePattern { get => _settings.FolderRenamePattern; set { _settings.FolderRenamePattern = value; _settings.Save(); } }
     public bool SwapThe { get => _settings.SwapThe; set { _settings.SwapThe = value; _settings.Save(); } }
+    public string LibraryRoot { get => _settings.LibraryRoot; set { _settings.LibraryRoot = value; _settings.Save(); } }
+    public string DefaultImportMode { get => _settings.DefaultImportMode; set { _settings.DefaultImportMode = value; _settings.Save(); } }
     public AppSettings GetSettings() => _settings;
+
+    public List<string> GetWatchFolders() => _library.WatchFolders;
+
+    public void UpdateWatchFolders(List<string> folders)
+    {
+        _library.WatchFolders.Clear();
+        _library.WatchFolders.AddRange(folders);
+        _library.Save();
+    }
 
     // --- Commands ---
 
