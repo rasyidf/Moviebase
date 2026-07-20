@@ -23,7 +23,17 @@ public partial class MainViewModel : ObservableObject
         _library.Load();
         foreach (var m in _library.Movies) Movies.Add(m);
         HasMovies = Movies.Count > 0;
-        if (HasMovies) StatusText = $"{Movies.Count} movies in library";
+        if (HasMovies) StatusText = FormatStatusBar();
+
+        // ponytail: fire-and-forget rescan; UI updates via ObservableCollection on DispatcherQueue
+        if (_library.WatchFolders.Count > 0)
+        {
+            _ = Task.Run(() =>
+            {
+                var added = RescanWatchFolders();
+                if (added > 0) StatusText = FormatStatusBar();
+            });
+        }
     }
 
     // --- Properties ---
@@ -457,5 +467,17 @@ public partial class MainViewModel : ObservableObject
         foreach (var group in groups)
             foreach (var entry in group)
                 entry.IsDuplicate = true;
+    }
+
+    /// <summary>Rich status bar text: count · size · watched</summary>
+    public string FormatStatusBar()
+    {
+        var count = Movies.Count;
+        var totalBytes = Movies.Sum(m => m.SizeBytes);
+        var watched = Movies.Count(m => m.IsWatched);
+        var sizeText = totalBytes >= 1L << 30
+            ? $"{totalBytes / (1024.0 * 1024 * 1024):0.#} GB"
+            : $"{totalBytes / (1024.0 * 1024):0.#} MB";
+        return $"{count} movies · {sizeText} · {watched} watched";
     }
 }

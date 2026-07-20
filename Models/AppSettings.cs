@@ -14,6 +14,11 @@ public class AppSettings
     public string LastDirectory { get; set; } = "";
     public string LibraryRoot { get; set; } = "";
     public string DefaultImportMode { get; set; } = "Symlink";
+    public string Theme { get; set; } = "System";
+    public int WindowX { get; set; } = -1;
+    public int WindowY { get; set; } = -1;
+    public int WindowWidth { get; set; } = -1;
+    public int WindowHeight { get; set; } = -1;
 
     // ponytail: DPAPI CurrentUser scope — encrypted value is only readable by this Windows user
     public string TmdbApiKey

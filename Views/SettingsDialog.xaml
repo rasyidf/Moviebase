@@ -136,6 +136,13 @@
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </Grid>
+
+                    <ComboBox x:Name="ThemeBox" Header="Theme" Width="200" SelectedIndex="0">
+                        <ComboBoxItem Content="System" Tag="System" />
+                        <ComboBoxItem Content="Light" Tag="Light" />
+                        <ComboBoxItem Content="Dark" Tag="Dark" />
+                    </ComboBox>
+
                     <HyperlinkButton Content="Source code on GitHub"
                                      NavigateUri="https://github.com/rasyidf/Moviebase" />
                     <HyperlinkButton Content="Terka — filename analyzer"

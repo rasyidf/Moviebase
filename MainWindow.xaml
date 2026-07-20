@@ -172,6 +172,12 @@
                                            Foreground="{ThemeResource SystemFillColorCautionBrush}" />
                                 <TextBlock x:Name="ImdbText" FontSize="11"
                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <HyperlinkButton x:Name="ImdbLink" Content="Open in IMDB" FontSize="11"
+                                                     Padding="0" Visibility="Collapsed" />
+                                    <HyperlinkButton x:Name="TmdbLink" Content="Open in TMDB" FontSize="11"
+                                                     Padding="0" Visibility="Collapsed" />
+                                </StackPanel>
                                 <TextBlock x:Name="QualityText" FontSize="11"
                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                             </StackPanel>

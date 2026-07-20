@@ -20,6 +20,18 @@ public partial class App : Application
         {
             Window = new MainWindow();
             Window.Activate();
+
+            // Apply theme from settings
+            var settings = Models.AppSettings.Load();
+            if (Window.Content is FrameworkElement root)
+            {
+                root.RequestedTheme = settings.Theme switch
+                {
+                    "Light" => ElementTheme.Light,
+                    "Dark" => ElementTheme.Dark,
+                    _ => ElementTheme.Default,
+                };
+            }
         }
         catch (Exception ex)
         {

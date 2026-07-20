@@ -30,6 +30,13 @@ public sealed partial class SettingsDialog : ContentDialog
             _ => 0
         };
 
+        ThemeBox.SelectedIndex = settings.Theme switch
+        {
+            "Light" => 1,
+            "Dark" => 2,
+            _ => 0
+        };
+
         _folders = new List<string>(watchFolders);
         FolderList.ItemsSource = _folders;
     }
@@ -43,6 +50,7 @@ public sealed partial class SettingsDialog : ContentDialog
     public string LibraryRoot => LibraryRootBox.Text;
     public List<string> WatchFolders => _folders;
     public string ImportMode => ImportModeBox.SelectedIndex switch { 1 => "Move", 2 => "Copy", _ => "Symlink" };
+    public string Theme => ThemeBox.SelectedIndex switch { 1 => "Light", 2 => "Dark", _ => "System" };
 
     // --- Navigation ---
 

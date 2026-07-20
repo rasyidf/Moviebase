@@ -31,6 +31,29 @@ public sealed partial class MainWindow : Window
         var scale = GetDpiForWindow(hwnd) / 96.0;
         AppWindow.Resize(new SizeInt32((int)(1100 * scale), (int)(720 * scale)));
 
+        // Restore window position/size from settings
+        var settings = _vm.GetSettings();
+        if (settings.WindowWidth > 0 && settings.WindowHeight > 0)
+        {
+            AppWindow.Resize(new SizeInt32(settings.WindowWidth, settings.WindowHeight));
+        }
+        if (settings.WindowX >= 0 && settings.WindowY >= 0)
+        {
+            AppWindow.Move(new Windows.Graphics.PointInt32(settings.WindowX, settings.WindowY));
+        }
+
+        // Save position/size on close
+        Closed += (_, _) =>
+        {
+            var pos = AppWindow.Position;
+            var size = AppWindow.Size;
+            settings.WindowX = pos.X;
+            settings.WindowY = pos.Y;
+            settings.WindowWidth = size.Width;
+            settings.WindowHeight = size.Height;
+            settings.Save();
+        };
+
         _vm.PropertyChanged += OnVmPropertyChanged;
 
         // Keyboard accelerators
@@ -115,6 +138,19 @@ public sealed partial class MainWindow : Window
             _vm.LibraryRoot = dialog.LibraryRoot;
             _vm.DefaultImportMode = dialog.ImportMode;
             _vm.UpdateWatchFolders(dialog.WatchFolders);
+
+            // Apply theme immediately
+            settings.Theme = dialog.Theme;
+            settings.Save();
+            if (Content is FrameworkElement root)
+            {
+                root.RequestedTheme = dialog.Theme switch
+                {
+                    "Light" => ElementTheme.Light,
+                    "Dark" => ElementTheme.Dark,
+                    _ => ElementTheme.Default,
+                };
+            }
         }
     }
 
@@ -282,6 +318,21 @@ public sealed partial class MainWindow : Window
 
         EmptyState.Visibility = Visibility.Collapsed;
 
+        // Recently Added section — last 5 by add order (list index)
+        var recentlyAdded = _vm.Movies.TakeLast(5).Reverse().ToList();
+        if (recentlyAdded.Count > 0 && string.IsNullOrWhiteSpace(_vm.SearchText))
+        {
+            MovieListPanel.Children.Add(new TextBlock
+            {
+                Text = "Recently Added",
+                FontSize = 13,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Margin = new Thickness(0, 4, 0, 4),
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            });
+            MovieListPanel.Children.Add(BuildMovieListView(recentlyAdded));
+        }
+
         // Group movies: standalone vs series/collections
         var standalone = filtered.Where(m => !m.IsInSeries && string.IsNullOrEmpty(m.CollectionName)).ToList();
         var seriesGroups = filtered.Where(m => m.IsInSeries)
@@ -330,9 +381,8 @@ public sealed partial class MainWindow : Window
             MovieListPanel.Children.Add(expander);
         }
 
-        MovieCountText.Text = filtered.Count == _vm.Movies.Count
-            ? $"{_vm.Movies.Count} movies"
-            : $"{filtered.Count}/{_vm.Movies.Count} movies";
+        // Rich status bar stats
+        MovieCountText.Text = _vm.FormatStatusBar();
     }
 
     private IEnumerable<MovieEntry> ApplySort(IEnumerable<MovieEntry> movies)
@@ -415,6 +465,17 @@ public sealed partial class MainWindow : Window
             {
                 _vm.SelectedMovie = movies[lv.SelectedIndex];
                 UpdateDetail();
+            }
+        };
+
+        // Double-click to play
+        listView.DoubleTapped += (s, args) =>
+        {
+            if (s is ListView lv && lv.SelectedIndex >= 0 && lv.SelectedIndex < movies.Count)
+            {
+                var movie = movies[lv.SelectedIndex];
+                if (File.Exists(movie.FullPath))
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(movie.FullPath) { UseShellExecute = true });
             }
         };
 
@@ -558,6 +619,28 @@ public sealed partial class MainWindow : Window
             !string.IsNullOrEmpty(movie.CollectionName) ? $"Collection: {movie.CollectionName}" : "";
         ImdbText.Text = !string.IsNullOrEmpty(movie.ImdbId) ? $"IMDB: {movie.ImdbId}" : "";
         PlotText.Text = movie.Plot;
+
+        // IMDB/TMDB links
+        if (movie.IsFetched)
+        {
+            if (!string.IsNullOrEmpty(movie.ImdbId))
+            {
+                ImdbLink.NavigateUri = new Uri($"https://www.imdb.com/title/{movie.ImdbId}/");
+                ImdbLink.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ImdbLink.Visibility = Visibility.Collapsed;
+            }
+
+            TmdbLink.NavigateUri = new Uri($"https://www.themoviedb.org/movie/{movie.TmdbId}");
+            TmdbLink.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ImdbLink.Visibility = Visibility.Collapsed;
+            TmdbLink.Visibility = Visibility.Collapsed;
+        }
 
         var techParts = new List<string>();
         if (!string.IsNullOrEmpty(movie.ScreenSize)) techParts.Add(movie.ScreenSize);
