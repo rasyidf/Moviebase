@@ -42,6 +42,8 @@ public partial class MainViewModel : ObservableObject
     public string FolderRenamePattern { get => _settings.FolderRenamePattern; set { _settings.FolderRenamePattern = value; _settings.Save(); } }
     public bool SwapThe { get => _settings.SwapThe; set { _settings.SwapThe = value; _settings.Save(); } }
 
+    public AppSettings GetSettings() => _settings;
+
     // --- Commands ---
 
     [RelayCommand]

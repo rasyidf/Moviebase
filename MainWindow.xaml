@@ -132,26 +132,6 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Settings Overlay -->
-            <Border x:Name="SettingsPanel" Grid.Column="1" Visibility="Collapsed"
-                    Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
-                    CornerRadius="8,0,0,8" Padding="24,20">
-                <ScrollViewer>
-                    <StackPanel Spacing="20">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <FontIcon Glyph="&#xE713;" FontSize="18" />
-                            <TextBlock Text="Settings" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        </StackPanel>
-                        <TextBox x:Name="ApiKeyBox" Header="TMDB API Key" PlaceholderText="Your API key from themoviedb.org" />
-                        <TextBox x:Name="ExtensionsBox" Header="File Extensions" PlaceholderText=".mp4;.mkv;.avi" />
-                        <TextBox x:Name="FilePatternBox" Header="File Rename Pattern" PlaceholderText="{}{Title} ({Year})" />
-                        <TextBox x:Name="FolderPatternBox" Header="Folder Rename Pattern" PlaceholderText="{}{Title} ({Year})" />
-                        <ToggleSwitch x:Name="SwapTheToggle" Header="Move 'The' to end" OnContent="Yes" OffContent="No" />
-                        <Button Content="Save &amp; Close" Click="SaveSettings_Click"
-                                Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" />
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
         </Grid>
 
         <!-- Status Bar -->

@@ -30,7 +30,6 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new SizeInt32((int)(1100 * scale), (int)(720 * scale)));
 
         _vm.PropertyChanged += OnVmPropertyChanged;
-        LoadSettingsToUi();
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -82,20 +81,23 @@ public sealed partial class MainWindow : Window
         RefreshMovieList();
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e)
+    private async void Settings_Click(object sender, RoutedEventArgs e)
     {
-        SettingsPanel.Visibility = SettingsPanel.Visibility == Visibility.Visible
-            ? Visibility.Collapsed : Visibility.Visible;
-    }
+        var settings = _vm.GetSettings();
+        var dialog = new Views.SettingsDialog(settings)
+        {
+            XamlRoot = Content.XamlRoot
+        };
 
-    private void SaveSettings_Click(object sender, RoutedEventArgs e)
-    {
-        _vm.TmdbApiKey = ApiKeyBox.Text;
-        _vm.MovieExtensions = ExtensionsBox.Text;
-        _vm.FileRenamePattern = FilePatternBox.Text;
-        _vm.FolderRenamePattern = FolderPatternBox.Text;
-        _vm.SwapThe = SwapTheToggle.IsOn;
-        SettingsPanel.Visibility = Visibility.Collapsed;
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            _vm.TmdbApiKey = dialog.ApiKey;
+            _vm.MovieExtensions = dialog.Extensions;
+            _vm.FileRenamePattern = dialog.FilePattern;
+            _vm.FolderRenamePattern = dialog.FolderPattern;
+            _vm.SwapThe = dialog.SwapThe;
+        }
     }
 
     // --- List building with collapsible Expander groups ---
@@ -304,12 +306,4 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void LoadSettingsToUi()
-    {
-        ApiKeyBox.Text = _vm.TmdbApiKey;
-        ExtensionsBox.Text = _vm.MovieExtensions;
-        FilePatternBox.Text = _vm.FileRenamePattern;
-        FolderPatternBox.Text = _vm.FolderRenamePattern;
-        SwapTheToggle.IsOn = _vm.SwapThe;
-    }
 }
