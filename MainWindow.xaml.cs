@@ -428,36 +428,26 @@ public sealed partial class MainWindow : Window
         if (!string.IsNullOrEmpty(movie.VideoCodec)) techParts.Add(movie.VideoCodec);
         if (!string.IsNullOrEmpty(movie.AudioCodec)) techParts.Add(movie.AudioCodec);
         if (!string.IsNullOrEmpty(movie.Edition)) techParts.Add(movie.Edition);
-        if (!string.IsNullOrEmpty(movie.ReleaseGroup)) techParts.Add($"[{movie.ReleaseGroup}]");
         QualityText.Text = string.Join(" · ", techParts);
 
         FileText.Text = movie.HasSubtitles
-            ? $"{movie.FileName}  ·  🗎 {movie.Subtitles.Count} subtitle(s)"
+            ? $"{movie.FileName}  ·  {movie.Subtitles.Count} subtitle(s)"
             : movie.FileName;
 
         // Load poster
-        var posterSource = GetPosterSource(movie);
-        if (!string.IsNullOrEmpty(posterSource))
-        {
-            var uri = posterSource.StartsWith("http") ? posterSource : posterSource;
-            PosterImage.Source = new BitmapImage(new Uri(
-                posterSource.StartsWith("http") ? posterSource : $"https://image.tmdb.org/t/p/w342{movie.PosterPath}"));
-        }
-        else
-        {
-            PosterImage.Source = null;
-        }
-
-        // If we have a local poster or TMDB path, use larger version for detail
-        if (!string.IsNullOrEmpty(movie.PosterPath))
-        {
-            PosterImage.Source = new BitmapImage(new Uri($"https://image.tmdb.org/t/p/w342{movie.PosterPath}"));
-        }
         var dir = Path.GetDirectoryName(movie.FullPath);
         var localPoster = dir is not null ? Path.Combine(dir, "poster.jpg") : null;
         if (localPoster is not null && File.Exists(localPoster))
         {
             PosterImage.Source = new BitmapImage(new Uri(localPoster));
+        }
+        else if (!string.IsNullOrEmpty(movie.PosterPath))
+        {
+            PosterImage.Source = new BitmapImage(new Uri($"https://image.tmdb.org/t/p/w185{movie.PosterPath}"));
+        }
+        else
+        {
+            PosterImage.Source = null;
         }
     }
 

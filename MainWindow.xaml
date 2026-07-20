@@ -20,7 +20,11 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <FontIcon Glyph="&#xE8B7;" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <Border Width="24" Height="24" CornerRadius="4"
+                    Background="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center" Margin="0,0,10,0">
+                <TextBlock Text="M" FontSize="13" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
+            </Border>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
                 <TextBlock Text="Moviebase" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
                 <TextBlock x:Name="PathText" Style="{StaticResource CaptionTextBlockStyle}"
@@ -115,44 +119,64 @@
 
             <!-- Right: Detail Panel -->
             <Border Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    CornerRadius="8,0,0,8" Padding="20,16" Margin="0,0,0,0">
-                <ScrollViewer>
-                    <Grid>
-                        <StackPanel x:Name="DetailEmpty" VerticalAlignment="Center" HorizontalAlignment="Center"
-                                    Spacing="8" Opacity="0.5">
-                            <FontIcon Glyph="&#xE8B9;" FontSize="32" HorizontalAlignment="Center"
-                                      Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                            <TextBlock Text="Select a movie" HorizontalAlignment="Center"
-                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        </StackPanel>
+                    CornerRadius="8,0,0,8" Padding="16,16" Margin="0,0,0,0">
+                <Grid>
+                    <StackPanel x:Name="DetailEmpty" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Spacing="8" Opacity="0.5">
+                        <FontIcon Glyph="&#xE8B9;" FontSize="32" HorizontalAlignment="Center"
+                                  Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <TextBlock Text="Select a movie" HorizontalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    </StackPanel>
 
-                        <StackPanel x:Name="DetailPanel" Visibility="Collapsed" Spacing="16">
-                            <Image x:Name="PosterImage" MaxHeight="280" Stretch="Uniform"
-                                   HorizontalAlignment="Center" />
-                            <StackPanel Spacing="6">
-                                <TextBlock x:Name="TitleText" Style="{StaticResource SubtitleTextBlockStyle}"
-                                           TextWrapping="Wrap" />
-                                <StackPanel Orientation="Horizontal" Spacing="12">
-                                    <TextBlock x:Name="YearText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock x:Name="GenreText" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    <Grid x:Name="DetailPanel" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Top: Poster + Key Info side by side -->
+                        <Grid Grid.Row="0" ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border CornerRadius="6" Width="100" Height="150"
+                                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                                <Image x:Name="PosterImage" Stretch="UniformToFill" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+                                <TextBlock x:Name="TitleText" Style="{StaticResource BodyStrongTextBlockStyle}"
+                                           TextWrapping="Wrap" MaxLines="3" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock x:Name="YearText" FontSize="12"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock x:Name="GenreText" FontSize="12"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <TextBlock x:Name="SeriesText" FontSize="12"
+                                <TextBlock x:Name="SeriesText" FontSize="11"
                                            Foreground="{ThemeResource SystemFillColorCautionBrush}" />
-                                <TextBlock x:Name="ImdbText" Foreground="{ThemeResource TextFillColorTertiaryBrush}" FontSize="12" />
+                                <TextBlock x:Name="ImdbText" FontSize="11"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                <TextBlock x:Name="QualityText" FontSize="11"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                             </StackPanel>
-                            <TextBlock x:Name="PlotText" TextWrapping="Wrap" MaxLines="10"
+                        </Grid>
+
+                        <!-- Middle: Plot (scrollable if needed) -->
+                        <ScrollViewer Grid.Row="1" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
+                            <TextBlock x:Name="PlotText" TextWrapping="Wrap" FontSize="12"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <StackPanel Spacing="4">
-                                <TextBlock x:Name="QualityText" FontSize="12"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock x:Name="FileText" FontSize="11"
-                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                           TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True" />
-                            </StackPanel>
-                        </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Bottom: File info -->
+                        <TextBlock x:Name="FileText" Grid.Row="2" FontSize="11" Margin="0,8,0,0"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True" />
                     </Grid>
-                </ScrollViewer>
+                </Grid>
             </Border>
 
         </Grid>
