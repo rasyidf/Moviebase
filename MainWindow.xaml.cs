@@ -100,36 +100,52 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        _vm.SearchText = sender.Text;
+        RefreshMovieList();
+    }
+
+    private async void ExportCsv_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.ExportCsvCommand.ExecuteAsync(null);
+    }
+
+    private async void ExportJson_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.ExportJsonCommand.ExecuteAsync(null);
+    }
+
     // --- List building with collapsible Expander groups ---
 
     private void RefreshMovieList()
     {
         MovieListPanel.Children.Clear();
 
-        if (_vm.Movies.Count == 0)
+        var filtered = _vm.FilteredMovies.ToList();
+
+        if (filtered.Count == 0)
         {
             EmptyState.Visibility = Visibility.Visible;
             MovieListPanel.Children.Add(EmptyState);
-            MovieCountText.Text = "";
+            MovieCountText.Text = _vm.Movies.Count > 0 ? $"{filtered.Count}/{_vm.Movies.Count}" : "";
             return;
         }
 
         EmptyState.Visibility = Visibility.Collapsed;
 
         // Group movies: standalone vs series
-        var standalone = _vm.Movies.Where(m => !m.IsInSeries).ToList();
-        var seriesGroups = _vm.Movies.Where(m => m.IsInSeries)
+        var standalone = filtered.Where(m => !m.IsInSeries).ToList();
+        var seriesGroups = filtered.Where(m => m.IsInSeries)
             .GroupBy(m => m.SeriesName)
             .OrderBy(g => g.Key)
             .ToList();
 
-        // Add standalone movies as a ListView
         if (standalone.Count > 0)
         {
             MovieListPanel.Children.Add(BuildMovieListView(standalone));
         }
 
-        // Add each series as a collapsible Expander
         foreach (var group in seriesGroups)
         {
             var expander = new Expander
@@ -146,7 +162,9 @@ public sealed partial class MainWindow : Window
             MovieListPanel.Children.Add(expander);
         }
 
-        MovieCountText.Text = $"{_vm.Movies.Count} movies";
+        MovieCountText.Text = filtered.Count == _vm.Movies.Count
+            ? $"{_vm.Movies.Count} movies"
+            : $"{filtered.Count}/{_vm.Movies.Count} movies";
     }
 
     private StackPanel BuildSeriesHeader(string name, int count)
@@ -189,7 +207,7 @@ public sealed partial class MainWindow : Window
             Year = m.Year > 0 ? m.Year.ToString() : "",
             Size = m.Size,
             PosterUrl = GetPosterSource(m),
-            Folder = !string.IsNullOrEmpty(m.QualityBadge) ? m.QualityBadge : m.FolderName,
+            Folder = BuildSubtitle(m),
         }).ToList();
 
         // Use a DataTemplate programmatically since we can't use x:Bind with dynamic ItemsSource
@@ -217,6 +235,15 @@ public sealed partial class MainWindow : Window
         if (localPoster is not null && File.Exists(localPoster)) return localPoster;
         if (!string.IsNullOrEmpty(m.ThumbnailUrl)) return m.ThumbnailUrl;
         return "";
+    }
+
+    private static string BuildSubtitle(MovieEntry m)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(m.QualityBadge)) parts.Add(m.QualityBadge);
+        else parts.Add(m.FolderName);
+        if (m.HasSubtitles) parts.Add($"🗎 {m.Subtitles.Count} sub");
+        return string.Join(" · ", parts);
     }
 
     private static DataTemplate CreateMovieItemTemplate()
@@ -278,7 +305,9 @@ public sealed partial class MainWindow : Window
         if (!string.IsNullOrEmpty(movie.ReleaseGroup)) techParts.Add($"[{movie.ReleaseGroup}]");
         QualityText.Text = string.Join(" · ", techParts);
 
-        FileText.Text = movie.FileName;
+        FileText.Text = movie.HasSubtitles
+            ? $"{movie.FileName}  ·  🗎 {movie.Subtitles.Count} subtitle(s)"
+            : movie.FileName;
 
         // Load poster
         var posterSource = GetPosterSource(movie);

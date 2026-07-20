@@ -57,6 +57,9 @@ public static class MovieScanner
         return entries;
     }
 
+    private static readonly HashSet<string> SubtitleExts = new(StringComparer.OrdinalIgnoreCase)
+        { ".srt", ".ass", ".ssa", ".sub", ".idx", ".vtt" };
+
     private static MovieEntry AnalyzeEntry(string movieFile, string? seriesName)
     {
         var entry = new MovieEntry();
@@ -86,6 +89,18 @@ public static class MovieScanner
                 if (entry.Year == 0 && folderGuess.Year.HasValue)
                     entry.Year = folderGuess.Year.Value;
             }
+        }
+
+        // Detect subtitles in the same directory
+        var dir = Path.GetDirectoryName(movieFile);
+        if (dir is not null)
+        {
+            entry.Subtitles = Directory.EnumerateFiles(dir)
+                .Where(f => SubtitleExts.Contains(Path.GetExtension(f)))
+                .Select(Path.GetFileName)
+                .Where(n => n is not null)
+                .Cast<string>()
+                .ToList();
         }
 
         return entry;

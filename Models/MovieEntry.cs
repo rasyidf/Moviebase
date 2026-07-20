@@ -24,6 +24,10 @@ public class MovieEntry
     public string ReleaseGroup { get; set; } = "";
     public string Edition { get; set; } = "";       // Extended, Remastered
 
+    // Subtitle info
+    public List<string> Subtitles { get; set; } = []; // e.g. ["eng.srt", "ind.ass"]
+    public bool HasSubtitles => Subtitles.Count > 0;
+
     public bool IsFetched => TmdbId > 0;
     public bool IsInSeries => !string.IsNullOrEmpty(SeriesName);
 

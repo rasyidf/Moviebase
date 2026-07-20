@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
         Movies = new ObservableCollection<MovieEntry>();
         StatusText = "Ready";
         CurrentPath = "";
+        SearchText = "";
     }
 
     // --- Properties ---
@@ -24,6 +25,8 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(FetchMetadataCommand))]
     [NotifyCanExecuteChangedFor(nameof(RenameAllCommand))]
     [NotifyCanExecuteChangedFor(nameof(DownloadPostersCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportCsvCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportJsonCommand))]
     public partial bool HasMovies { get; set; }
 
     [ObservableProperty] public partial string StatusText { get; set; }
@@ -32,8 +35,24 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] public partial MovieEntry? SelectedMovie { get; set; }
     [ObservableProperty] public partial bool ShowSettings { get; set; }
     [ObservableProperty] public partial string CurrentPath { get; set; }
+    [ObservableProperty] public partial string SearchText { get; set; }
 
     public ObservableCollection<MovieEntry> Movies { get; }
+
+    /// <summary>Returns movies filtered by SearchText.</summary>
+    public IEnumerable<MovieEntry> FilteredMovies
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(SearchText))
+                return Movies;
+            var q = SearchText.Trim();
+            return Movies.Where(m =>
+                m.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                m.Genre.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                m.SeriesName.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+    }
 
     // Settings pass-through
     public string TmdbApiKey { get => _settings.TmdbApiKey; set { _settings.TmdbApiKey = value; _settings.Save(); } }
@@ -62,15 +81,25 @@ public partial class MainViewModel : ObservableObject
         CurrentPath = folder.Path;
 
         IsBusy = true;
-        StatusText = "Scanning...";
+        StatusText = "Loading...";
         Movies.Clear();
 
-        var entries = await Task.Run(() => MovieScanner.Scan(folder.Path, _settings.MovieExtensions));
-        foreach (var e in entries)
-            Movies.Add(e);
+        // Try loading persisted data first
+        var cached = await Task.Run(() => PersistenceService.Load(folder.Path));
+        if (cached is not null)
+        {
+            foreach (var e in cached) Movies.Add(e);
+            StatusText = $"Loaded {Movies.Count} movies (cached)";
+        }
+        else
+        {
+            StatusText = "Scanning...";
+            var entries = await Task.Run(() => MovieScanner.Scan(folder.Path, _settings.MovieExtensions));
+            foreach (var e in entries) Movies.Add(e);
+            StatusText = $"Found {Movies.Count} movies";
+        }
 
         HasMovies = Movies.Count > 0;
-        StatusText = $"Found {Movies.Count} movies";
         IsBusy = false;
     }
 
@@ -112,7 +141,11 @@ public partial class MainViewModel : ObservableObject
             Progress = (double)done / unfetched.Count * 100;
         }
 
-        StatusText = $"Fetched metadata for {done} movies";
+        // Auto-save after fetch
+        if (!string.IsNullOrEmpty(CurrentPath))
+            await Task.Run(() => PersistenceService.Save(CurrentPath, Movies));
+
+        StatusText = $"Fetched metadata for {done} movies (saved)";
         Progress = 0;
         IsBusy = false;
     }
@@ -166,6 +199,35 @@ public partial class MainViewModel : ObservableObject
         IsBusy = false;
     }
 
-    [RelayCommand]
-    private void ToggleSettings() => ShowSettings = !ShowSettings;
+    [RelayCommand(CanExecute = nameof(HasMovies))]
+    private async Task ExportCsvAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.WindowHandle);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = "moviebase-export";
+        picker.FileTypeChoices.Add("CSV", [".csv"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null) return;
+
+        await Task.Run(() => ExportService.ExportCsv(file.Path, Movies));
+        StatusText = $"Exported {Movies.Count} movies to CSV";
+    }
+
+    [RelayCommand(CanExecute = nameof(HasMovies))]
+    private async Task ExportJsonAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.WindowHandle);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = "moviebase-export";
+        picker.FileTypeChoices.Add("JSON", [".json"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null) return;
+
+        await Task.Run(() => ExportService.ExportJson(file.Path, Movies));
+        StatusText = $"Exported {Movies.Count} movies to JSON";
+    }
 }

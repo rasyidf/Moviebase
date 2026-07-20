@@ -39,6 +39,7 @@
             <Grid Grid.Column="0" Padding="16,0,8,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
@@ -67,12 +68,20 @@
                         <AppBarButton.Icon><FontIcon Glyph="&#xE8AC;" /></AppBarButton.Icon>
                     </AppBarButton>
                     <CommandBar.SecondaryCommands>
+                        <AppBarButton Label="Export CSV" Click="ExportCsv_Click" Icon="Download" />
+                        <AppBarButton Label="Export JSON" Click="ExportJson_Click" Icon="Download" />
+                        <AppBarSeparator />
                         <AppBarButton Label="Settings" Click="Settings_Click" Icon="Setting" />
                     </CommandBar.SecondaryCommands>
                 </CommandBar>
 
+                <!-- Search/Filter -->
+                <AutoSuggestBox x:Name="SearchBox" Grid.Row="1" PlaceholderText="Filter movies..."
+                                QueryIcon="Find" Margin="0,0,0,8"
+                                TextChanged="SearchBox_TextChanged" VerticalAlignment="Top" />
+
                 <!-- Movie List Area -->
-                <ScrollViewer Grid.Row="1" Padding="0,0,0,8">
+                <ScrollViewer Grid.Row="2" Padding="0,0,0,8">
                     <StackPanel x:Name="MovieListPanel" Spacing="0">
                         <!-- Empty state -->
                         <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center"
