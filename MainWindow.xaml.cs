@@ -411,32 +411,30 @@ public sealed partial class MainWindow : Window
         listView.ItemTemplate = CreateMovieItemTemplate();
         listView.ItemClick += (s, args) =>
         {
-            if (args.ClickedItem is MovieEntryDisplay display)
+            if (s is ListView lv && lv.SelectedIndex >= 0 && lv.SelectedIndex < movies.Count)
             {
-                var idx = movies.FindIndex(m => m.Title == display.Title && m.Year.ToString() == display.Year);
-                if (idx >= 0)
-                {
-                    _vm.SelectedMovie = movies[idx];
-                    UpdateDetail();
-                }
+                _vm.SelectedMovie = movies[lv.SelectedIndex];
+                UpdateDetail();
             }
         };
 
         // Context menu on right-click
         listView.RightTapped += (s, args) =>
         {
+            if (s is not ListView lv) return;
+
+            // Determine the tapped item index
             var element = args.OriginalSource as FrameworkElement;
-            // Walk up to find the data context
-            while (element != null && element.DataContext is not MovieEntryDisplay)
+            while (element != null && element is not ListViewItem)
                 element = element.Parent as FrameworkElement;
 
-            if (element?.DataContext is not MovieEntryDisplay display) return;
-
-            var idx = movies.FindIndex(m => m.Title == display.Title && m.Year.ToString() == display.Year);
-            if (idx < 0) return;
+            if (element is not ListViewItem item) return;
+            var idx = lv.IndexFromContainer(item);
+            if (idx < 0 || idx >= movies.Count) return;
 
             var movie = movies[idx];
             _vm.SelectedMovie = movie;
+            lv.SelectedIndex = idx;
             UpdateDetail();
 
             var menu = new MenuFlyout();
@@ -484,7 +482,7 @@ public sealed partial class MainWindow : Window
             };
             menu.Items.Add(remove);
 
-            menu.ShowAt(element, args.GetPosition(element));
+            menu.ShowAt(item, args.GetPosition(item));
         };
 
         return listView;
